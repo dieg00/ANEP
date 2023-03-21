@@ -2,70 +2,170 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def ajuste_N(N,Neumann=True):
+    #Pequeña funcion auxiliar que devuelve N+1 en el caso Neumann y N-1 en Dirichlet
+    return N-1+2*Neumann
+    
+
 def calcular_matriz(parametro_lambda, parametro_theta,N,Neumann=True,devolver_inversa=True):
-    multiplicador = 1+Neumann
+    #Esta funcion calcula la matriz (o su inversa), con la que obtendremos los valores de la solucion en el siguiente paso temporal. Requiere los parametros lambda y theta, así como el número de subdivisiones espaciales N. Los toggle booleanos Neumann y devolver_inversa permiten especificar si estamos empleando condiciones de frontera de tipo Neumann, y si queremos obtener la inversa de la matriz; respectivamente.
+
+    #Distinguimos entre los dos casos Neumann y Dirichlet de cara a la forma y valores de la matriz
+    multiplicador = 1+Neumann 
     N = ajuste_N(N,Neumann)
+
+    #Computamos los valores de la matriz con 3 diagonales
     matriz = np.diag([1+2*parametro_lambda*parametro_theta]*N)+np.diag([-parametro_theta*parametro_lambda]*(N-1),-1)+np.diag([-parametro_theta*parametro_lambda]*(N-1),1)
+
+    #En el caso Neumann, hay dos entradas que son -2*lambda*theta
     matriz[0,1] *= multiplicador
     matriz[N-1,N-2] *= multiplicador
+
+    #Para comprobar el resultado, se ha añadido una entrada booleana que especifica si se busca la matriz en sí, o su inversa (que al final es lo que usaremos para calcular)
     if devolver_inversa:
         matriz = np.linalg.inv(matriz)
+    
+    #Junto a otros casos, por problemas de overflow para algunas pruebas se han introducido arrays y variables con datatype float128, que permite mayor precision
+    matriz = np.array(matriz,dtype=np.float128)
     return matriz
 
-def generar_mallado(N,M,Neumann=True):
-    mallado = np.zeros([N+1,M+1])
+
+def generar_mallado(N,M):
+    #Genera el mallado de la solución, una matriz de N filas y M columnas. Cada columna representará un instante temporal (las filas serán los distintos valores espaciales). Requiere el número de subdivisiones espaciales N y temporales M.
+    mallado = np.zeros([N+1,M+1],dtype=np.float128)
     return mallado
 
-def generar_valores(funcion,x_inicial,x_final,N,Neumann=True):
+
+def generar_valores(funcion,x_inicial,x_final,N):
+    #Permite popular un array con valores de una función de puntos equiespaciados. Se usa para obtener las condiciones iniciales cuando vienen dadas por una funcion. Requiere la funcion con la que queremos popular el array, los puntos inicial (x_inicial) y final (x_final), y el numero de subdivisiones del intervalo.
     xi = np.linspace(x_inicial,x_final,N+1)
     return funcion(xi)
 
-def inicializar_mallado(condiciones_iniciales,N,M,Neumann=True):
+
+def generar_mallado_valores(funcion,x_inicial,x_final,N,t_inicial,t_final,M):
+    #Como generar_valores pero bidimensional, para el caso del término de creación, en el que se necesita conocer valores en un mallado espaciotemporal. Por tanto, la funcion ha de estar definida f(x,t). Requiere la funcion, los limites de los intervalos espacial y temporal, así como el número de sus subdivisiones.
+
+    #Aprovechamos generar_mallado para crear un array con las dimensiones de la solución u, que compartirá los puntos espaciotemporales en que estamos computando el cálculo numérico.
+    f = generar_mallado(N,M)
+
+    #Generamos los arrays espaciales y temporales que formarán la malla
+    xi = np.linspace(x_inicial,x_final,N+1)
+    ti = np.linspace(t_inicial,t_final,M+1)
+
+    #Recorremos la malla asignando el valor de la funcion en cada punto
+    for j in range(M+1):
+        for i in range(N+1):
+            f[i,j] = funcion(x=xi[i],t=ti[j])
+    return f
+
+
+def inicializar_mallado(condiciones_iniciales,N,M):
+    #Esta funcion inicializa el mallado incorporando las condiciones iniciales en la primera columna (correspondiente al primer instante temporal). Requiere el array de condiciones_iniciales, así como las dimensiones del mallado de puntos.
+
+    #Generamos el mallado
     u = generar_mallado(N=N,M=M)
+
+    #Incorporamos las condiciones iniciales
     u[:,0] = condiciones_iniciales
     return u
 
 
 def calcular_bi(u,i,j,f,N,parametro_lambda,parametro_theta, Delta_t, Neumann = True):
+    #Permite computar la entrada i-esima del vector bj, por lo que estamos particularizando un punto de la malla determinado. Requiere la malla u actualizada, las coordenadas i, j; los parametros lambda y theta, el intervalo temporal Delta_t. Además, se añade un toggle booleano entre las dos posibilidades de condiciones de frontera: Neumann y Dirichlet
+
+    #En el caso Neumann, la definicion de bj[0] y bj[N] es distinto al tomar puntos exteriores al mallado que comparten valores con los puntos inmediatamente adyacentes al borde. La unica diferencia en las expresiones es un termino_variable.
     if Neumann and i in [0,N]:
+
+        #Pequeño truco para definir i0=1 si i==0, i0=N-1 si i==N
         i0 = min(i + 1, N - 1)
-        termino_variable = 2 * u[i0, j]
+
+        #Computa dicho termino_variable
+        termino_variable = np.float128(2 * u[i0, j])
+
+    #Si no estamos en el caso Neumann en estos valores en la frontera espacial, tendremos el termino_variable habitual
     else:
-        termino_variable = u[i+1,j]+u[i-1,j]
+        termino_variable = np.float128(u[i+1,j]+u[i-1,j])
+
+    #Computamos la formula con este termino_variable
     return parametro_lambda*(1-parametro_theta)*termino_variable+u[i,j]*(1-2*parametro_lambda*(1-parametro_theta))+Delta_t*(parametro_theta*f[i,j+1]+parametro_theta*f[i,j])
 
-def ajuste_N(N,Neumann=True):
-    if Neumann:
-        return N+1
-    else:
-        return N-1
+    
 def calcular_b(u,j,f,N,parametro_lambda,parametro_theta, Delta_t, Neumann = True):
-    b = np.zeros([ajuste_N(N,Neumann),1])
+    #Funcion envoltura de calcular_bi que establece un loop para computar cada entrada del vector b. Requiere la malla u actualizada, la columna temporal j actual; los parametros lambda y theta, el intervalo temporal Delta_t, e incluye un toggle booleano para distinguir en la operativa entre condiciones Neumann y Dirichlet
+
+    #Inicializa el vector b, que medirá N-1 si tenemos condiciones de Dirichlet, y N+1 si tenemos condiciones de Neumann. Nótese que por ello se usa la funcion auxiliar ajuste_N definida anteriormente.
+    b = np.zeros([ajuste_N(N,Neumann),1],dtype=np.float128)
+
+    #Itera sobre las distintas entradas a popular del vector i, llamando a calcular_bi en cada caso con el punto espacial correspondiente
     for i in range(N+1):
+
+        #Aqui solo tenemos el problema de definicion de que el vector b tiene entradas de 1 a N-1 en Dirichlet, y de 0 a N en Neumann. Por tanto, queremos NO estar en la situacion Dirichlet AND i=0,i=N
         if Neumann or i not in [0,N]:
+
+            #Si estamos en Dirichlet, tendremos que indexar bj[1] a bj[0] (el array va de 0 a N-2). Para ello usamos el truco de -(not Neumann), que será -1 en este caso, y 0 en Neumann.
             b[i-(not Neumann)]=calcular_bi(u=u,i=i,j=j,f=f,N=N,parametro_lambda=parametro_lambda,parametro_theta=parametro_theta,Neumann=Neumann, Delta_t=Delta_t)
+
     return b
 
+
 def iterar_operaciones(u,matriz,N,M,f,parametro_lambda,parametro_theta,Delta_t,Neumann=True):
-    #N = ajuste_N(N,Neumann)
+    #Representa el paso más largo: habiendo configurado las condiciones iniciales y los diversos mallados, es necesario iterar. El proceso será computar b para un tiempo j, y multiplicarle la inversa de la matriz para hallar el estado del sistema en un tiempo j+1.
+    #Requeriremos la malla inicializada u, la matriz obtenida con los parametros, los numeros de subdivisiones N y M, el mallado f con los valores del termino de creacion, los parametros lambda y theta, el intervalo Delta_t, y el toggle booleano Neumann para distinguir entre casos.
+
+    #Iteramos para cada tiempo j, que nos permite calcular el sistema en el tiempo j+1 posterior. Por tanto, solo necesitamos iterar hasta j=M-1
     for j in range(M):
+
+        #Se calcula el vector bj
         bj = calcular_b(u=u,j=j,f=f,N=N,parametro_lambda=parametro_lambda,parametro_theta=parametro_theta,Delta_t=Delta_t,Neumann=Neumann)
+
+        #Se multiplica la matriz y el vector para obtener la columna u[:,j+1]. En el caso Dirichlet, tendremos que tener en cuenta que actualizamos solo los valores de la malla entre i==1 e i==N-1. Para ello introducimos "not Neumann:N+Neumann", que es 0:N+1 en Neumann y 1:N en Dirichlet
         u[not Neumann:N+Neumann,j+1]=matriz.dot(bj).ravel()
+
     return u
 
-def total_wrap(parametro_theta,N,M,T,x0=0,xf=1,T0=0,Neumann=True,condiciones_son_funcion=True,funcion_condiciones=np.sin, condiciones_iniciales=np.nan):
-    Delta_t = (T-T0)/M
-    Delta_x = (xf-x0)/N
+
+def calcular_sistema(parametro_theta,N,M,x_inicial=0,x_final=1,t_inicial=0,t_final=1,Neumann=True,condiciones_son_funcion=True,funcion_condiciones=None, condiciones_iniciales=None, termino_fuente=None):
+    #La función que ordena globalmente la lógica de la operación llamando a las distintas funciones anteriores, para generar el mallado de soluciones final u.
+    #Requiere el parametro theta, el numero de subdivisiones espaciales N y temporales M, así como los límites de los intervalos espacial ([x_inicial,x_final]) y temporal ([t_inicial,t_final]). El toggle Neumann distingue entre los dos tipos de condiciones de frontera. El toggle condiciones_son_funcion determina si se tomará la funcion funcion_condiciones como funcion para generar el array inicial de condiciones iniciales (en caso de True) o por el contrario se usará el array condiciones_iniciales definidas numericamente (en caso de False). Por ultimo se incluye la funcion de creacion f(x,t) en el termino_fuente
+    
+    #Se calcula el tamaño de los intervalos espacial y temporal, además del parametro lambda asociado.
+    Delta_x = (x_final-x_inicial)/N
+    Delta_t = (t_final-t_inicial)/M
     parametro_lambda = Delta_t/(Delta_x**2)
-    if (1-parametro_theta)*parametro_lambda <= 1/2:
-        raise ValueError("El parametro lambda no cumple las condiciones de convergencia")
+
+    #Se verifica que se cumple la condicion de convergencia para el lambda y theta resultantes. En caso contrario se genera un error
+    if (1-parametro_theta)*parametro_lambda > 1/2:
+        print("Yes")
+        raise ValueError("Los parametros lambda y theta no cumplen con la condicion de convergencia")
+    
+    #En caso de que las condiciones iniciales se obtengan a partir de una funcion, se calcula ahora el array condiciones_iniciales a partir de los valores que adopta dicha funcion en los puntos espaciales
     if condiciones_son_funcion:
-        condiciones_iniciales=generar_valores(funcion=funcion_condiciones,x_inicial=x0,x_final=xf,N=N,Neumann=Neumann)
-    u = inicializar_mallado(condiciones_iniciales=condiciones_iniciales,N=N,M=M,Neumann=Neumann)
+        condiciones_iniciales=generar_valores(funcion=funcion_condiciones,x_inicial=x_inicial,x_final=x_final,N=N)
+
+    #Se inicializa el mallado con dichas condiciones_iniciales
+    u = inicializar_mallado(condiciones_iniciales=condiciones_iniciales,N=N,M=M)
+
+    #Se computa la inversa de la matriz que se utilizará al iterar el método.
     matriz = calcular_matriz(parametro_lambda=parametro_lambda, parametro_theta=parametro_theta,N=N,Neumann=Neumann,devolver_inversa=True)
-    u = iterar_operaciones(u, matriz, N, M, np.zeros_like(u), parametro_lambda, parametro_theta, Delta_t, Neumann=Neumann)
-    print(u.shape)
+
+    #Se computa el mallado con los valores del termino de creacion para cada punto espaciotemporal
+    f = generar_mallado_valores(funcion=termino_fuente,x_inicial=x_inicial,x_final=x_final,N=N,M=M,t_inicial=t_inicial,t_final=t_final)
+
+    #Se calcula el estado del sistema en cada tiempo devolviendo la matriz u con toda la evolucion y el estado final
+    u = iterar_operaciones(u, matriz, N, M, f, parametro_lambda, parametro_theta, Delta_t, Neumann=Neumann)
     return u
 
-total_wrap(parametro_theta=0,N=10,M=5,T=5,funcion_condiciones=np.cos,Neumann=False)
 
+def u0(x):
+    return x**2*(1-x)**2
+
+def f(x,t):
+    if t <= np.pi:
+        return (1+np.cos(t))*x*(1-x)
+    else:
+        return 0
+
+
+
+data = calcular_sistema(parametro_theta=0,N=10,M=1000,T=5,funcion_condiciones=u0,Neumann=True, termino_fuente=f)
+print(data.shape)
