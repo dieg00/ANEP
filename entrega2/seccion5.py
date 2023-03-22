@@ -25,14 +25,14 @@ def calcular_matriz(parametro_lambda, parametro_theta,N,Neumann=True,devolver_in
     if devolver_inversa:
         matriz = np.linalg.inv(matriz)
     
-    #Junto a otros casos, por problemas de overflow para algunas pruebas se han introducido arrays y variables con datatype float128, que permite mayor precision
-    matriz = np.array(matriz,dtype=np.float128)
+    #Junto a otros casos, por problemas de overflow para algunas pruebas se han introducido arrays y variables con datatype float64, que permite mayor precision
+    matriz = np.array(matriz,dtype=np.float64)
     return matriz
 
 
 def generar_mallado(N,M):
     #Genera el mallado de la solución, una matriz de N filas y M columnas. Cada columna representará un instante temporal (las filas serán los distintos valores espaciales). Requiere el número de subdivisiones espaciales N y temporales M.
-    mallado = np.zeros([N+1,M+1],dtype=np.float128)
+    mallado = np.zeros([N+1,M+1],dtype=np.float64)
     return mallado
 
 
@@ -80,11 +80,11 @@ def calcular_bi(u,i,j,f,N,parametro_lambda,parametro_theta, Delta_t, Neumann = T
         i0 = min(i + 1, N - 1)
 
         #Computa dicho termino_variable
-        termino_variable = np.float128(2 * u[i0, j])
+        termino_variable = np.float64(2 * u[i0, j])
 
     #Si no estamos en el caso Neumann en estos valores en la frontera espacial, tendremos el termino_variable habitual
     else:
-        termino_variable = np.float128(u[i+1,j]+u[i-1,j])
+        termino_variable = np.float64(u[i+1,j]+u[i-1,j])
 
     #Computamos la formula con este termino_variable
     return parametro_lambda*(1-parametro_theta)*termino_variable+u[i,j]*(1-2*parametro_lambda*(1-parametro_theta))+Delta_t*(parametro_theta*f[i,j+1]+parametro_theta*f[i,j])
@@ -94,7 +94,7 @@ def calcular_b(u,j,f,N,parametro_lambda,parametro_theta, Delta_t, Neumann = True
     #Funcion envoltura de calcular_bi que establece un loop para computar cada entrada del vector b. Requiere la malla u actualizada, la columna temporal j actual; los parametros lambda y theta, el intervalo temporal Delta_t, e incluye un toggle booleano para distinguir en la operativa entre condiciones Neumann y Dirichlet
 
     #Inicializa el vector b, que medirá N-1 si tenemos condiciones de Dirichlet, y N+1 si tenemos condiciones de Neumann. Nótese que por ello se usa la funcion auxiliar ajuste_N definida anteriormente.
-    b = np.zeros([ajuste_N(N,Neumann),1],dtype=np.float128)
+    b = np.zeros([ajuste_N(N,Neumann),1],dtype=np.float64)
 
     #Itera sobre las distintas entradas a popular del vector i, llamando a calcular_bi en cada caso con el punto espacial correspondiente
     for i in range(N+1):
@@ -156,16 +156,86 @@ def calcular_sistema(parametro_theta,N,M,x_inicial=0,x_final=1,t_inicial=0,t_fin
     return u
 
 
+def min_M(parametro_theta,N,t_final,t_inicial=0,x_inicial=0,x_final=1):
+    #Esta función computa el minimo valor de M para que pueda converger el sistema. Sigue el criterio de convergencia y requiere N, theta y los limites de los intervalos espacial y temporal.
+    return int(np.ceil((2*(1-parametro_theta)*N**2*(t_final-t_inicial))/((x_final-x_inicial)**2)))
+
+##A partir de este punto se encuentra el codigo de nuestro problema en particular, que permite resolver los apartados especificos
+
 def u0(x):
+    #Definimos la funcion u0(x) de condiciones iniciales
     return x**2*(1-x)**2
 
 def f(x,t):
+    #definimos el termino de creacion
     if t <= np.pi:
         return (1+np.cos(t))*x*(1-x)
     else:
         return 0
 
+#Ajustamos theta, N y T
+parametro_theta=0.5
+N=100
+T=5
+
+#Ajustamos M. Si usamos un theta distinto de 1, nos guiaremos por el requisito de convergencia. En caso contrario, asignaremos de forma arbitraria M=1000
+if parametro_theta !=1:
+    M = min_M(parametro_theta=parametro_theta,N=N,t_final=T)
+else:
+    M = 1000
+
+#Calculamos el sistema con las condiciones de frontera de Neumann
+print("Running Neumann...")
+sistema_neumann = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=True,termino_fuente=f)
+print("Finished!")
+
+#Dibujamos un mapa de calor que nos permita ver la evolucion
+fig, ax = plt.subplots()
+im = ax.imshow(sistema_neumann, aspect='auto')
+cbar = ax.figure.colorbar(im, ax=ax)
+ax.set_title("Sistema u(x,t), condiciones Neumann")
+ax.set_ylabel("Eje espacial (x)")
+ax.set_xlabel("Eje temporal (t)")
+y_ticks = np.linspace(0, 1, 11)
+ax.set_yticks(np.linspace(0, N, 11))
+ax.set_yticklabels(np.round(y_ticks,decimals=1))
+x_ticks = np.linspace(0, T, 11)
+ax.set_xticks(np.linspace(0, M, 11))
+ax.set_xticklabels(np.round(x_ticks,decimals=0))
+plt.show()
 
 
-data = calcular_sistema(parametro_theta=0,N=10,M=1000,T=5,funcion_condiciones=u0,Neumann=True, termino_fuente=f)
-print(data.shape)
+#Calculamos la masa total M(t) integrando u(x,t) respecto a x. Esto es, sumando cada columna y multiplicando por Delta_t
+masa_total = np.sum(sistema_neumann,axis=0)*(1/N)
+tiempos = np.linspace(0,T,M+1)
+
+#Representamos la masa total graficamente
+plt.plot(tiempos, masa_total)
+plt.title("Evolución masa total calculada numéricamente")
+plt.xlabel("Tiempo t")
+plt.ylabel("Masa total M(t)")
+plt.show()
+
+
+#Calculamos el sistema con las condiciones de frontera de Dirichlet
+print("Running Dirichlet...")
+sistema_dirichlet = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=False,termino_fuente=f)
+print("Finished!")
+
+#Dibujamos un mapa de calor que nos permita ver la evolucion
+fig, ax = plt.subplots()
+im = ax.imshow(sistema_dirichlet, aspect='auto')
+cbar = ax.figure.colorbar(im, ax=ax)
+ax.set_title("Sistema u(x,t), condiciones Dirichlet")
+ax.set_ylabel("Eje espacial (x)")
+ax.set_xlabel("Eje temporal (t)")
+y_ticks = np.linspace(0, 1, 11)
+ax.set_yticks(np.linspace(0, N, 11))
+ax.set_yticklabels(np.round(y_ticks,decimals=1))
+x_ticks = np.linspace(0, T, 11)
+ax.set_xticks(np.linspace(0, M, 11))
+ax.set_xticklabels(np.round(x_ticks,decimals=0))
+plt.show()
+
+print("El valor minimo de la resta de ambos sistemas es %f", np.min(sistema_neumann-sistema_dirichlet))
+
