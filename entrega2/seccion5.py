@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from figura1 import M as masa_total_analitica
 
 
 def ajuste_N(N,Neumann=True):
@@ -173,69 +174,96 @@ def f(x,t):
     else:
         return 0
 
-#Ajustamos theta, N y T
-parametro_theta=0.5
-N=100
-T=5
+def u0_modificada(x):
+    #Condiciones iniciales negativas para la ultima pregunta del apartado k
+    return -2+x
 
-#Ajustamos M. Si usamos un theta distinto de 1, nos guiaremos por el requisito de convergencia. En caso contrario, asignaremos de forma arbitraria M=1000
-if parametro_theta !=1:
-    M = min_M(parametro_theta=parametro_theta,N=N,t_final=T)
-else:
-    M = 1000
+def f_modificada(x,t):
+    #Termino fuente nulo para la ultima pregunta del apartado k
+    return 0
 
-#Calculamos el sistema con las condiciones de frontera de Neumann
-print("Running Neumann...")
-sistema_neumann = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=True,termino_fuente=f)
-print("Finished!")
-
-#Dibujamos un mapa de calor que nos permita ver la evolucion
-fig, ax = plt.subplots()
-im = ax.imshow(sistema_neumann, aspect='auto')
-cbar = ax.figure.colorbar(im, ax=ax)
-ax.set_title("Sistema u(x,t), condiciones Neumann")
-ax.set_ylabel("Eje espacial (x)")
-ax.set_xlabel("Eje temporal (t)")
-y_ticks = np.linspace(0, 1, 11)
-ax.set_yticks(np.linspace(0, N, 11))
-ax.set_yticklabels(np.round(y_ticks,decimals=1))
-x_ticks = np.linspace(0, T, 11)
-ax.set_xticks(np.linspace(0, M, 11))
-ax.set_xticklabels(np.round(x_ticks,decimals=0))
-plt.show()
+def mapacalor(sistema,condiciones):
+    #Funcion que genera el mapa de calor, para un sistema, y denotando unas condiciones
+    fig, ax = plt.subplots()
+    im = ax.imshow(sistema, aspect='auto', cmap='hot')
+    im.get_cmap
+    cbar = ax.figure.colorbar(im, ax=ax)
+    ax.set_title("Sistema u(x,t), condiciones "+condiciones)
+    ax.set_ylabel("Eje espacial (x)")
+    ax.set_xlabel("Eje temporal (t)")
+    y_ticks = np.linspace(0, 1, 11)
+    ax.set_yticks(np.linspace(0, N, 11))
+    ax.set_yticklabels(np.round(y_ticks,decimals=1))
+    x_ticks = np.linspace(0, T, 11)
+    ax.set_xticks(np.linspace(0, M, 11))
+    ax.set_xticklabels(np.round(x_ticks,decimals=1))
+    plt.show()
 
 
-#Calculamos la masa total M(t) integrando u(x,t) respecto a x. Esto es, sumando cada columna y multiplicando por Delta_t
-masa_total = np.sum(sistema_neumann,axis=0)*(1/N)
-tiempos = np.linspace(0,T,M+1)
+if __name__ == '__main__':    
+    parametro_theta=0.5     #Ajustamos theta, N y T
+    N=100
+    T=5
 
-#Representamos la masa total graficamente
-plt.plot(tiempos, masa_total)
-plt.title("Evolución masa total calculada numéricamente")
-plt.xlabel("Tiempo t")
-plt.ylabel("Masa total M(t)")
-plt.show()
+    plotear_cosas = True    #Ajusta si queremos que se muestren las figuras, para temas de debugging
+    sistemas_normales = True #Ajusta si queremos el calculo de los sistemas normales, para temas de debugging
+    sistemas_modificados = True #Ajusta si queremos el calculo de los sistemas modificados, para temas de debugging
+
+    #Ajustamos M. Si usamos un theta distinto de 1, nos guiaremos por el requisito de convergencia. En caso contrario, asignaremos de forma arbitraria M=1000
+    if parametro_theta !=1:
+        M = min_M(parametro_theta=parametro_theta,N=N,t_final=T)
+    else:
+        M = 1000
+
+    if sistemas_normales:   #Calculamos el sistema con las condiciones de frontera de Neumann
+        print("Running Neumann...")
+        sistema_neumann = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=True,termino_fuente=f)
+        print("Finished!")
+
+        if plotear_cosas: #Dibujamos un mapa de calor que nos permita ver la evolucion
+            mapacalor(sistema_neumann, "Neumann")
 
 
-#Calculamos el sistema con las condiciones de frontera de Dirichlet
-print("Running Dirichlet...")
-sistema_dirichlet = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=False,termino_fuente=f)
-print("Finished!")
+            #Calculamos la masa total M(t) integrando u(x,t) respecto a x. Esto es, sumando cada columna y multiplicando por Delta_t
+            masa_total_numerica = np.sum(sistema_neumann,axis=0)*(1/N)
+            tiempos = np.linspace(0,T,M+1)
 
-#Dibujamos un mapa de calor que nos permita ver la evolucion
-fig, ax = plt.subplots()
-im = ax.imshow(sistema_dirichlet, aspect='auto')
-cbar = ax.figure.colorbar(im, ax=ax)
-ax.set_title("Sistema u(x,t), condiciones Dirichlet")
-ax.set_ylabel("Eje espacial (x)")
-ax.set_xlabel("Eje temporal (t)")
-y_ticks = np.linspace(0, 1, 11)
-ax.set_yticks(np.linspace(0, N, 11))
-ax.set_yticklabels(np.round(y_ticks,decimals=1))
-x_ticks = np.linspace(0, T, 11)
-ax.set_xticks(np.linspace(0, M, 11))
-ax.set_xticklabels(np.round(x_ticks,decimals=0))
-plt.show()
+            #Representamos la masa total graficamente
+            X=np.linspace(0,5,1000)
+            Y=[masa_total_analitica(x) for x in X]
+            plt.plot(tiempos, masa_total_numerica,c='orange', label='Numérica')
+            plt.plot(X,Y, label='Analítica')
+            plt.title("Comparativa evolución masa total")
+            plt.xlabel("Tiempo t")
+            plt.ylabel("Masa total M(t)")
+            plt.legend()
+            plt.show()
 
-print("El valor minimo de la resta de ambos sistemas es %f", np.min(sistema_neumann-sistema_dirichlet))
+
+        #Calculamos el sistema con las condiciones de frontera de Dirichlet
+        print("Running Dirichlet...")
+        sistema_dirichlet = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0,Neumann=False,termino_fuente=f)
+        print("Finished!")
+
+        if plotear_cosas:#Dibujamos un mapa de calor que nos permita ver la evolucion
+            mapacalor(sistema_dirichlet, "Dirichlet")
+
+        #Obtenemos el valor minimo de la resta para ver si u_N es mayor que u_D
+        print("El valor minimo de la resta u_N-u_D es ", np.min(sistema_neumann-sistema_dirichlet))
+
+
+    if sistemas_modificados:
+        #Calculamos los sistemas modificados
+        print("Running Neumann modificado...")
+        sistema_neumann_modificado = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0_modificada,Neumann=True,termino_fuente=f_modificada)
+        print("Now running Dirichlet modificado...")
+        sistema_dirichlet_modificado = calcular_sistema(parametro_theta=parametro_theta,N=N,M=M,t_final=T,funcion_condiciones=u0_modificada,Neumann=False,termino_fuente=f_modificada)
+        print("Finished!")
+
+        if plotear_cosas:
+            mapacalor(sistema_neumann_modificado, "Neumann, modificado")
+            mapacalor(sistema_dirichlet_modificado, "Dirichlet, modificado")
+        print("El valor minimo de la resta de u_N-u_D (modificados) es ", np.min(sistema_neumann_modificado-sistema_dirichlet_modificado), " y el máximo es ", np.max(sistema_neumann_modificado-sistema_dirichlet_modificado))
+        #print("El valor minimo de la resta de u_D-u_N (modificados) es ", np.min(sistema_neumann_modificado-sistema_dirichlet_modificado))
+
 
