@@ -19,7 +19,7 @@ def x_tramo(t,x0,toggle):
 
 def x_loop(x0, delta_t):
     limits = [50,60,np.inf]
-    dif_t = 0
+    t0 = 0
     toggle = 1
     if x0<=50:
         toggle = 0
@@ -27,16 +27,16 @@ def x_loop(x0, delta_t):
         toggle = 2
     output = []
     for t in np.arange(0,1,delta_t):
-        output.append(x_tramo(t-dif_t,x0,toggle))
+        output.append(x_tramo(t-t0,x0,toggle))
         if output[-1]>=limits[toggle]:
             x0 = limits[toggle]
             toggle += 1
-            dif_t = t
+            t0 = t
     return output, np.arange(0,1,delta_t)
 
 # Apartado b
 if apartado_b:
-    for x0 in np.arange(0,100,5):
+    for x0 in np.arange(0,100,2.5):
         x, y = x_loop(x0,0.0001)
         plt.plot(x,y,"blue")
     plt.xlim([0,100])
