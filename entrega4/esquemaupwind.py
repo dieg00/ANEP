@@ -16,10 +16,6 @@ def vs(x):
         return 70 + 50 * (1 - (60 - x) / 10)
 
 
-# def theta_value(matriz_theta,n,m,parametro_lambda,x0=0,delta_x=0.01,t0=0,delta_t=0.01):
-#    matriz_theta[n,m] = matriz_theta[n-1,m]-vs(x0+n*delta_t)*parametro_lambda*(matriz_theta[n-1,m]-matriz_theta[n-1,m-1])
-#    return matriz_theta
-
 def condis_iniciales_x(x):
     return vs(x) * np.exp(-(np.abs(x - 10) ** 2) / 25)
 
@@ -52,14 +48,13 @@ def calcular_theta(N, M, x0=0, xf=100, t0=0, tf=1, title="θ(x,t) Modelo Simplif
     matriz_theta = crear_matriz(N, M)
     delta_x = (xf - x0) / N
     delta_t = (tf - t0) / M
-    parametro_lambda = delta_t / delta_x
     for n in range(N + 1):
         matriz_theta[0, n] = condis_iniciales_x(x0 + delta_x * n)
     for m in range(M + 1):
         matriz_theta[m, 0] = condis_iniciales_t(t0 + delta_t * m)
     for n in range(1, N + 1):
         for m in range(1, M + 1):
-            matriz_theta[m, n] = matriz_theta[m - 1, n] - vs(x0 + delta_x * n) * parametro_lambda * (
+            matriz_theta[m, n] = matriz_theta[m - 1, n] - vs(x0 + delta_x * n) * (delta_t / delta_x) * (
                         matriz_theta[m - 1, n] - matriz_theta[m - 1, n - 1])
     representar_mallado(matriz_theta, N=N, M=M, title=title, plot_show=True)
     return matriz_theta

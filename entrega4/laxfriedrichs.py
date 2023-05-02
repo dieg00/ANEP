@@ -38,11 +38,10 @@ def representar_mallado(mallado, title, xlabel='Eje x', ylabel='Eje t', N=1000, 
         plt.show()
 
 
-def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5):
+def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5, title='Densidad u(x,t) Modelo No Lineal, Método Lax-Friedrichs'):
     delta_t = delta_x / 120
     N = int((xf - x0) / delta_x)
     M = int((tf - t0) / delta_t)
-    parametro_lambda = delta_t / delta_x
     u = crear_matriz(N, M)
     for n in range(N + 1):
         u[0, n] = u0(x0 + delta_x * n)
@@ -51,9 +50,9 @@ def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5):
         u[m, N] = condis_iniciales_t(t0 + delta_t * m)
     for m in range(1, M + 1):
         for n in range(1, N):
-            u[m, n] = (u[m - 1, n + 1] + u[m - 1, n - 1] - parametro_lambda * (
+            u[m, n] = (u[m - 1, n + 1] + u[m - 1, n - 1] - (delta_t / delta_x) * (
                         f(u[m - 1, n + 1]) - f(u[m - 1, n - 1]))) / 2
-    representar_mallado(u, title='u(x,t) Lax-Friedrichs', N=N, M=M, plot_show=True, x_inicial=x0, x_final=xf,
+    representar_mallado(u, title=title, N=N, M=M, plot_show=True, x_inicial=x0, x_final=xf,
                         t_inicial=t0, t_final=tf)
     return u
 
