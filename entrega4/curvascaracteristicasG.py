@@ -12,11 +12,11 @@ def x(t, x0, u0_valor):
 
 def calcular_curva(x0, t0=0, tf=1, M=1000):
     u0_valor = u0(x0)
-    output = np.zeros(M)
+    output_x = np.zeros(M)
     tiempos = np.linspace(t0, tf, M)
     for m in range(M):
-        output[m] = x(tiempos[m], x0=x0, u0_valor=u0_valor)
-    return output, tiempos
+        output_x[m] = x(tiempos[m], x0=x0, u0_valor=u0_valor)
+    return output_x, tiempos
 
 
 def pintar_curvas(t0=0, tf=1, M=1000, x0=0, xf=100, delta_x=2.5):
