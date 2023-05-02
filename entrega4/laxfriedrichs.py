@@ -38,7 +38,7 @@ def representar_mallado(mallado, title, xlabel='Eje x', ylabel='Eje t', N=1000, 
         plt.show()
 
 
-def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5, title='Densidad u(x,t) Modelo No Lineal, Método Lax-Friedrichs'):
+def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5, title='Densidad u(x,t) No Lineal, Lax-Friedrichs'):
     delta_t = delta_x / 120
     N = int((xf - x0) / delta_x)
     M = int((tf - t0) / delta_t)
