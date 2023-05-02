@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from celluloid import Camera
 
 def crear_matriz(N, M):
     return np.zeros([M + 1, N + 1])
@@ -51,11 +51,26 @@ def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5):
         u[m, N] = condis_iniciales_t(t0 + delta_t * m)
     for m in range(1, M + 1):
         for n in range(1, N):
-            u[m, n] = (u[m - 1, n + 1] + u[n - 1, n - 1] - parametro_lambda * (
+            u[m, n] = (u[m - 1, n + 1] + u[m - 1, n - 1] - parametro_lambda * (
                         f(u[m - 1, n + 1]) - f(u[m - 1, n - 1]))) / 2
     representar_mallado(u, title='u(x,t) Lax-Friedrichs', N=N, M=M, plot_show=True, x_inicial=x0, x_final=xf,
                         t_inicial=t0, t_final=tf)
     return u
 
-
-calcular_lax(0.2)
+def animar(matriz_datos, x0=0, xf=100, y0=0,yf=1):
+    M, N = matriz_datos.shape
+    x = np.linspace(x0, xf, N)
+    fig = plt.figure()
+    camera = Camera(fig)
+    plt.xlim([x0, xf])
+    plt.ylim([y0,yf])
+    for m in range(M)[::25]:
+        plt.plot(x, matriz_datos[m, :], "b", linewidth=5)
+        plt.xlabel('Eje x(km)')
+        plt.ylabel('Densidad de tráfico u')
+        camera.snap()
+    animation = camera.animate(interval=1, blit=False)
+    animation.save('animacion2.gif', writer='Pillow')
+    return animation
+u = calcular_lax(0.2)
+animar(u)

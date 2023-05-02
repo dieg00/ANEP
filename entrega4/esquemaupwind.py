@@ -74,20 +74,20 @@ def calcular_u(matriz_theta, x0=0, xf=100, title=" Densidad u(x,t) Modelo Simpli
     return matriz_theta
 
 
-def animar(matriz_datos, x0=0, xf=100):
+def animar(matriz_datos, x0=0, xf=100, y0=0, yf=1):
     M, N = matriz_datos.shape
     x = np.linspace(x0, xf, N)
     fig = plt.figure()
     camera = Camera(fig)
-    plt.xlim(x0, xf)
-    for m in range(M):
-        if m % 10:
-            plt.plot(x, matriz_datos[m, :], "b", linewidth=5)
-            plt.xlabel('Eje x(km)')
-            plt.ylabel('Densidad de tráfico u')
-            camera.snap()
+    plt.xlim([x0, xf])
+    plt.ylim([y0,yf])
+    for m in range(M)[::25]:
+        plt.plot(x, matriz_datos[m, :], "b", linewidth=5)
+        plt.xlabel('Eje x(km)')
+        plt.ylabel('Densidad de tráfico u')
+        camera.snap()
     animation = camera.animate(interval=1, blit=False)
-    animation.save('animacion1.gif', writer='Pillow')  # esto guarda el video
+    animation.save('animacion1.gif', writer="Pillow")  # esto guarda el video
     return animation
 
 
