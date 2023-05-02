@@ -43,9 +43,9 @@ def pintar_curvas(x0=0, xf=100, delta_x=2.5, t0=0, tf=1, delta_t=0.0001):
         plt.plot(x, y, "blue")
     plt.xlim([x0, xf])
     plt.ylim([t0, tf])
-    plt.xlabel("Dimensión espacial x (km)")
-    plt.ylabel("Dimensión temporal t (h)")
-    plt.title("Curvas características en el plano x-t")
+    plt.xlabel("Eje x (km)")
+    plt.ylabel("Eje t (h)")
+    plt.title("Curvas características de θ en el plano x-t")
     plt.show()
 
 

@@ -18,7 +18,7 @@ def f(u):
     return 120 * u * (1 - u)
 
 
-def representar_mallado(mallado, title, xlabel='Eje x', ylabel='Eje t', N=1000, M=1000, plot_show=False, x_inicial=0,
+def representar_mallado(mallado, title, xlabel='Eje x (km)', ylabel='Eje t (h)', N=1000, M=1000, plot_show=False, x_inicial=0,
                         x_final=100, t_inicial=0, t_final=1):
     # Funcion que genera un mapa de calor para una matriz dada. Permite seleccionar el titulo, el nombre de cada eje, los valores relativos al número de puntos y extremos (para poder marcar correctamente los ejes), y tiene un toggle plot_show por si queremos que se ejecute plt.show() al acabar, cosa que no querremos al buscar que se formen varios plots a la vez. La función está extraída con ligeras modificaciones de la entrega anterior.
     fig, ax = plt.subplots()
@@ -56,17 +56,20 @@ def calcular_lax(delta_x, x0=0, xf=100, t0=0, tf=2.5, title='Densidad u(x,t) No 
                         t_inicial=t0, t_final=tf)
     return u
 
-def animar(matriz_datos, x0=0, xf=100, y0=0,yf=1):
+def animar(matriz_datos, x0=0, xf=100, y0=0,yf=1,t0=0,tf=2.5):
     M, N = matriz_datos.shape
+    delta_t = (tf-t0)/M
     x = np.linspace(x0, xf, N)
     fig = plt.figure()
     camera = Camera(fig)
     plt.xlim([x0, xf])
     plt.ylim([y0,yf])
+    plt.xlabel("Eje x (km)")
+    plt.ylabel("Densidad u")
+    plt.title("Evolución temporal u(x,t) No Lineal")
     for m in range(M)[::25]:
         plt.plot(x, matriz_datos[m, :], "b", linewidth=5)
-        plt.xlabel('Eje x(km)')
-        plt.ylabel('Densidad de tráfico u')
+        plt.text((xf-x0)*0.55+x0, (yf-y0)*0.9+y0, f"Tiempo transcurrido: {m*delta_t:.2f} horas", fontsize=8.5)
         camera.snap()
     animation = camera.animate(interval=1, blit=False)
     animation.save('animacion2.gif', writer='Pillow')
