@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from celluloid import Camera
 
 def crear_matriz(N,M):
     return np.zeros([M+1,N+1])
@@ -41,7 +41,7 @@ def representar_mallado(mallado,title,xlabel='Eje x',ylabel='Eje t',N=1000,M=100
     if plot_show:
         plt.show()
 
-def calcular_theta(N,M,x0=0,xf=100,t0=0,tf=1):
+def calcular_theta(N,M,x0=0,xf=100,t0=0,tf=1,title="θ(x,t) Modelo Simplificado"):
     matriz_theta = crear_matriz(N,M)
     delta_x = (xf-x0)/N
     delta_t = (tf-t0)/M
@@ -53,7 +53,35 @@ def calcular_theta(N,M,x0=0,xf=100,t0=0,tf=1):
     for n in range(1,N+1):
         for m in range(1,M+1):
             matriz_theta[m,n] = matriz_theta[m-1,n]-vs(x0+delta_x*n)*parametro_lambda*(matriz_theta[m-1,n]-matriz_theta[m-1,n-1])
-    representar_mallado(matriz_theta, N=N, M=M, title="θ(x,t) Modelo Simplificado", plot_show=True)
+    representar_mallado(matriz_theta, N=N, M=M, title=title, plot_show=True)
     return matriz_theta
 
-b = calcular_theta(1000,1000)
+def calcular_u(matriz_theta, x0=0, xf=100,title=" Densidad u(x,t) Modelo Simplificado"):
+    M,N = matriz_theta.shape
+    delta_x = (xf-x0)/N
+    for n in range(N):
+        matriz_theta[:,n] /= vs(x0+n*delta_x)
+    representar_mallado(matriz_theta, N=N, M=M, title=title, plot_show=True)
+    return matriz_theta
+
+def animar(matriz_datos,x0=0,xf=100):
+    M,N = matriz_datos.shape
+    x = np.linspace(x0,xf,N)
+    fig = plt.figure()
+    camera = Camera(fig)
+    plt.xlim(x0,xf)
+    for m in range(M):
+        if m%10:
+            plt.plot(x, matriz_datos[m,:],"b", linewidth=5)
+            plt.xlabel('Eje x(km)')
+            plt.ylabel('Densidad de tráfico u')
+            camera.snap()
+    animation = camera.animate(interval=1, blit=False)
+    animation.save('animacion1.gif', writer = 'Pillow') # esto guarda el video
+    return animation
+
+matriz_theta = calcular_theta(1000,1200)
+calcular_theta(1000,1000,title="θ(x,t) violando CFL")
+u = calcular_u(matriz_theta)
+animar(u)
+
