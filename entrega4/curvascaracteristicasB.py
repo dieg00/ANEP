@@ -4,21 +4,25 @@ import matplotlib.pyplot as plt
 
 def x_tramo_1(t, x0):
     # Funcion x(t) en el tramo [0,50]
+
     return x0 + 70 * t
 
 
 def x_tramo_2(t, x0):
     # Función x(t) en el tramo [50,60]
+
     return (x0 - 36) * np.exp(5 * t) + 36
 
 
 def x_tramo_3(t, x0):
     # Función x(t) en el tramo [60,100]
+
     return x0 + 120 * t
 
 
 def x_tramo(t, x0, toggle):
     # Con un toggle [0,1,2] se elige el tramo actual, permitiendo unir las tres funciones de tramos en una
+
     x_tramos = [x_tramo_1, x_tramo_2, x_tramo_3]
     return x_tramos[toggle](t, x0)
 
@@ -26,7 +30,7 @@ def x_tramo(t, x0, toggle):
 def calcular_curva(x0, delta_t):
     # Calcula las coordenadas (x,t) de la curva característica que tiene a x0 como valor inicial.
 
-    #Definimos los límites de los intervalos
+    # Definimos los límites de los intervalos
     limits = [50, 60, np.inf]
 
     # El tiempo inicial en una x dada será el instante en que se haya alcanzado el valor inicial de su intervalo o 0 si se partía originalmente de dicho intervalo.
@@ -54,6 +58,7 @@ def calcular_curva(x0, delta_t):
 
 def pintar_curvas(x0=0, xf=100, delta_x=2.5, t0=0, tf=1, delta_t=0.0001):
     # Esta función va iterando por los distintos valores de posiciones iniciales x_0 que puede haber y dibujando la curva característica de cada uno.
+
     for x_0 in np.arange(x0, xf, delta_x):
         x, y = calcular_curva(x_0, delta_t)
         plt.plot(x, y, "blue")
